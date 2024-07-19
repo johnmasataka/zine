@@ -1,0 +1,71 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+.background {
+    background-size: cover;
+    background-position: center;
+    height: 100%;
+    position: relative; /* Make sure the background is the reference point for absolutely positioned elements */
+}
+
+.background svg {
+    position: absolute;
+    top: 0; /* Make sure SVG is positioned relative to its container */
+    left: 0;
+    width: 100%; /* Full width of the container */
+    height: 100%; /* Full height of the container */
+    z-index: 10; /* Ensure the SVG is above the background */
+}
+
+.center-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 100px;
+    color: rgb(0, 0, 0);
+}
+
+.center-image {
+    display: block; 
+    margin: 0 auto; 
+}
+
+/*.circle {
+    width: 200px; 
+    height: 200px;
+    border-radius: 100%;
+    border: 5x solid black;
+    background-color: rgba(211, 211, 211, 0.5); 
+    position: absolute;
+    cursor: pointer;
+    outline: none;
+    border: none;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); 
+    transition: background-color 0.3s, transform 0.3s;  
+}
+
+.circle:hover {
+    background-color: rgba(169, 169, 169, 0.8); 
+    transform: scale(1.1); 
+} 
+
+/* #circle1 {
+    top: 10%; 
+    left: 10%; 
+}
+
+#circle2 {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+#circle3 {
+    bottom: 10%; 
+    right: 10%; 
+}
