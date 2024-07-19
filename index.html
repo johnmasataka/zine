@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>critical methods in spatial research</title>
+    <link rel="stylesheet" href="./main.css">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/charts/loader.js"></script>
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-J2SEN9LXNV"></script>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+</head>
+<body>
+
+    <div class="side-panel">
+        <p>
+            Description of how network visualization and methods of research tool works: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam at urna gravida, convallis est ac, faucibus nulla. Ut eleifend ex non orci tempus commodo.
+        </p>
+        <input type="text" id="searchInput" class="search-input" placeholder="search by author, keyword, method...">
+        <button onclick="search()" id="searchButton">Go</button>
+        <p>
+            Workshop Panels:
+        </p>
+        <div class="panel-button-wrapper">
+            <div id="VisualCodeButton" class="panel-button"></div>
+            <span class="button-text">Visual Code</span>
+        </div>
+    
+        <div class="panel-button-wrapper">
+            <div id="mappingConflictButton" class="panel-button"></div>
+            <div class="button-text">Mapping Conflict</div>
+        </div>
+    
+        <div class="panel-button-wrapper">
+            <div id="counterNarrativesButton" class="panel-button"></div>
+            <span class="button-text">Counter Narratives</span>
+        </div>
+    
+        <div class="panel-button-wrapper">
+            <div id="localDataButton" class="panel-button"></div>
+            <span class="button-text">Local Data</span>
+        </div>
+    
+        <div class="panel-button-wrapper">
+            <div id="networksButton" class="panel-button"></div>
+            <span class="button-text">Network Models</span>
+        </div>
+    
+        <div class="panel-button-wrapper">
+            <div id="forensicsButton" class="panel-button"></div>
+            <span class="button-text">Counter Forensics</span>
+        </div>
+
+        <p>
+            Center for Spatial Research
+        </p>
+        <div class="panel-button-wrapper">
+            <div id="csrButton" class="panel-button"></div>
+            <span class="button-text">Projects</span>
+        </div>
+        
+    </div>
+    
+<div id="networkviz"></div>
+<div id="authorButton"></div>
+<div id="projectButton"></div>
+
+<script>
+
+    let data; 
+    function loadData() {
+        d3.json("tutorials.json").then(function(loadedData) {
+            data = loadedData;
+            visualizeData();
+        });
+    }
+
+    loadData();
+
+    function visualizeData() {
+        // set the dimensions and margins of the graph
+        const margin = {top: 10, right: 10, bottom: 10, left: 400},
+        width = window.innerWidth - margin.left - margin.right,
+        height = window.innerHeight - margin.top - margin.bottom; // TODO test if it fits in iframe properly on CSR site
+
+        // append the svg object to the body of the page
+        const svg = d3.select("#networkviz")
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform",
+                `translate(${margin.left}, ${margin.top})`); 
+
+
+        var panels = Array.from(new Set(data.tutorials.map(tutorial => tutorial.panel)));
+
+          // Creating the links
+          var links = [];
+          var tagLinks =[]
+          var panelLinks =[] //this separation is pointless
+        
+        panels.forEach(panel => {
+            var tutorialsInPanel = data.tutorials.filter(tutorial => tutorial.panel === panel);
+            for (let i = 0; i < tutorialsInPanel.length; i++) {
+                for (let j = i + 1; j < tutorialsInPanel.length; j++) {
+                    if (tutorialsInPanel[i].project !== tutorialsInPanel[j].project) {
+                        panelLinks.push({
+                            source: tutorialsInPanel[i].project,
+                            target: tutorialsInPanel[j].project,
+                            panel: panel  // Add the panel name to the link object
+                        });
+                    }
+                }
+            }
+        });
+
+
+        // console.log(links);
+
+        // Extract tags for each project
+        const projectTags = data.tutorials.map(tutorial => ({ project: tutorial.project, tags: tutorial.tags }));
+
+        projectTags.forEach((source, i) => {
+        projectTags.slice(i + 1).forEach(target => {
+            // Check if there are common words in tags between source and target
+            const commonTags = [];
+            source.tags.forEach(sourceTag => {
+                target.tags.forEach(targetTag => {
+                    const sourceWords = sourceTag.split(" ");
+                    const targetWords = targetTag.split(" ");
+                    sourceWords.forEach(word => {
+                        if (targetWords.includes(word)) {
+                            commonTags.push(word);
+                        }
+                    });
+                });
+            });
+            if (commonTags.length > 0) {
+                // If there are common words, create a link between the projects
+                tagLinks.push({ source: source.project, target: target.project, commonTags: commonTags });
+                }
+            });
+        });
+
+        const allLinks = links.concat(tagLinks, panelLinks); 
+
+        console.log(allLinks);
+
+
+        // Define a function to get the color class based on the panel name
+        function getNodeColor(panel) {
+            switch (panel) {
+                case "Visual Code":
+                    return "panel-VisualCode";
+                case "Mapping Conflict":
+                    return "panel-MappingConflict";
+                case "Counter Narrative":
+                    return "panel-CounterNarrative";
+                case "Local Data":
+                    return "panel-LocalData";
+                case "Network Models":
+                    return "panel-NetworkModels";
+                case "Counter Forensics":
+                    return "panel-CounterForensics";
+                default:
+                    return "panel-Default";
+            }
+        }
+
+        // console.log(panelLinks);
+
+
+    function getLinkClassName(panel) {
+        return `link ${panel.replace(/\s+/g, '')}`; // Remove spaces and lowercase
+    }
+
+    const link = svg
+        .selectAll("line")
+        .data(allLinks)
+        .enter()
+        .append("line")
+        .attr("class", function(d) {
+            if (d.panel) {
+                return getLinkClassName(d.panel); // Assign the class dynamically based on panel name
+            } else {
+                return "link"; // Default class for links without a panel
+            }
+        });
+
+        
+        function getNodePanel(node) {
+             const tutorial = data.tutorials.find(tutorial => tutorial.project === node.project);
+            return tutorial ? tutorial.panel : ""; // Return panel if tutorial exists, otherwise return an empty string
+        }
+
+        const node = svg
+            .selectAll("circle")
+            .data(data.tutorials)
+            .join("circle")
+                .attr("r", 10)
+                .attr("class", d => `node panel-${d.panel.replace(/\s+/g, '')} ${getNodeColor(d.panel)}`)
+                // .attr("class", d => `node panel-${d.panel.replace(/\s+/g, '')}`)
+                // .style("fill", d => getNodeColor(d.panel))
+                .each(function(d) {
+                 d3.select(this).attr("original-panel", d.panel); // Store the original panel name
+                });
+
+
+
+        const text = svg
+            .selectAll("text")
+            .data(data.tutorials)
+            .enter()
+            .append("text")
+            .attr("class", "node-text")
+            .attr("x", d => d.x)
+            .attr("y", d => d.y)
+            .text(d => d.authors)
+            .each(function(d) {
+                d3.select(this)
+                    .attr("original-panel", d.panel); // Store the original panel name
+            });
+
+
+                
+            // console.log(links);
+        const simulation = d3.forceSimulation(data.tutorials)
+            .force("link", d3.forceLink(allLinks) // This force provides links between nodes
+                .id(d => d.project) // This provide  the id of a node
+                .links(allLinks)  // and this the list of links
+                ) 
+
+            .force("charge", d3.forceManyBody() // This adds repulsion between nodes.
+                .strength(-1500)
+            ) 
+            .force("center", d3.forceCenter(width / 2, height / 2)) // bring to center of svg
+            .force("x", d3.forceX(width / 2).strength(0.1)) // Horizontal force
+            .force("y", d3.forceY(height / 2).strength(0.2)) // Vertical force
+            .on("end", ticked);
+
+        function ticked() {
+            link
+                .attr("x1", function(d) { return d.source.x; })
+                .attr("y1", function(d) { return d.source.y; })
+                .attr("x2", function(d) { return d.target.x; })
+                .attr("y2", function(d) { return d.target.y; });
+
+            node
+                .attr("cx", function (d) { return d.x+1; })
+                .attr("cy", function(d) { return d.y-1; });
+
+            text
+               .attr("x", function(d) { return d.x -50; }) // Adjust the position of the text
+               .attr("y", function(d) { return d.y +30; }); // Adjust the position of the text
+        };
+
+        //onclick link to individual tutorial pages
+        svg.selectAll(".node")
+            .on("click", handleClick);
+
+        function handleClick(event, d) {
+            const projectName = d.project.replace(/\s+/g, '');
+            const baseUrl = `${window.location.origin}${window.location.pathname.replace('index.html', '')}`;
+            const projectUrl = `${baseUrl}tutorials/${projectName}.html`;
+            window.open(projectUrl, '_blank'); // open in new window
+        }
+
+    }
+
+    function search() {
+        var searchText = document.getElementById("searchInput").value.toLowerCase();
+
+        // Filter the data based on search text
+        var filteredData = data.tutorials.filter(function(item) {
+            return (
+                item.project.toLowerCase().includes(searchText) ||
+                item.authors.some(author => author.toLowerCase().includes(searchText)) ||
+                item.tags.some(tag => tag.toLowerCase().includes(searchText))
+            );
+
+            
+        });
+
+        console.log(filteredData);
+
+        // Update visualization with filtered data
+        highlightNodes(filteredData);
+    }
+
+    let searchLinks = [];
+
+    function highlightNodes(filteredData) {
+        // Reset styles for all nodes
+        d3.selectAll(".node")
+            .attr("r", 10)
+            .style("stroke-width", "2px");
+
+        // Highlight filtered nodes
+        d3.selectAll(".node")
+            .filter(function(d) {
+                return filteredData.some(function(item) {
+                    return item.project === d.project;
+                });
+            })
+            .attr("r", 12)
+            .style("stroke-width", "5px");
+                
+
+        d3.selectAll(".link")
+            .style("stroke-width", function(d) {
+                const sourceConnected = filteredData.some(function(item) {
+                    return item.project === d.source.project;
+                });
+                const targetConnected = filteredData.some(function(item) {
+                    return item.project === d.target.project;
+                });
+                if (sourceConnected && targetConnected) {
+                    searchLinks.push(d); // Store the filtered link
+                    return "3px"; // Set stroke width to 3px for links connected to filtered nodes on both ends
+                } else {
+                    return "1px"; // Set stroke width to 1px for other links
+                }
+            })
+            .style("opacity", function(d) {
+                const sourceConnected = filteredData.some(function(item) {
+                    return item.project === d.source.project;
+                });
+                const targetConnected = filteredData.some(function(item) {
+                    return item.project === d.target.project;
+                });
+                return (sourceConnected && targetConnected) ? 1.0 : 0.6; // Set opacity to 1 for links connected to filtered nodes on both ends
+            });
+    }
+
+// Function to toggle highlight based on panel
+
+const originalNodeStrokeColors = {};
+
+function toggleHighlightByTag(tag, highlight) {
+    const normalizedTag = tag.toLowerCase(); // Normalize the tag to lower case
+    const taggedNodes = document.querySelectorAll('.node');
+    const taggedLinks = document.querySelectorAll('.link');
+
+    const highlightedNodes = new Set(); // Set to store currently highlighted nodes
+
+    taggedNodes.forEach(node => {
+        const nodeData = d3.select(node).data()[0]; // Get the data bound to the node
+        const nodeTags = nodeData.tags.map(t => t.toLowerCase()); // Normalize node tags to lower case
+        if (nodeTags.includes(normalizedTag)) {
+            if (highlight && normalizedTag === 'csr') {
+                if (!originalNodeStrokeColors[nodeData.project]) {
+                    originalNodeStrokeColors[nodeData.project] = node.style.stroke; // Store original stroke color
+                }
+                node.style.strokeWidth = '5px'; // Set stroke width to 5px
+                node.setAttribute('r', 12); // Increase circle radius size
+                node.style.stroke = '#29AAE1'; // Set stroke color to #29AAE1 for csr tag
+            } else if (highlight) {
+                node.style.strokeWidth = '5px'; // Set stroke width to 5px
+                node.setAttribute('r', 12); // Increase circle radius size
+            } else {
+                node.style.strokeWidth = '2px'; // Restore default stroke width
+                node.setAttribute('r', 10); // Restore default circle radius size
+                if (normalizedTag === 'csr') {
+                    node.style.stroke = originalNodeStrokeColors[nodeData.project] || ''; // Restore original stroke color for csr tag
+                }
+            }
+            highlightedNodes.add(nodeData.project); // Add node project to highlighted set
+        }
+    });
+
+    taggedLinks.forEach(link => {
+        const linkData = d3.select(link).data()[0]; // Get the data bound to the link
+        const sourceNode = linkData.source.project;
+        const targetNode = linkData.target.project;
+        
+        if (highlightedNodes.has(sourceNode) && highlightedNodes.has(targetNode)) {
+            if (highlight) {
+                link.style.strokeWidth = '3px'; 
+            } else {
+                link.style.strokeWidth = '1px'; // Restore default stroke width
+            }
+        } else {
+            link.style.strokeWidth = '1px'; // Restore default stroke width for unhighlighted links
+        }
+    });
+}
+
+
+function toggleHighlight(panel, highlight) {
+    const panelNodes = document.querySelectorAll(`.node.panel-${panel}`);
+    const panelLinks = document.querySelectorAll(`.link.${panel}`);
+    
+    panelNodes.forEach(node => {
+        if (highlight) {
+            node.style.strokeWidth = '5px'; // Set stroke width to 5px
+            node.setAttribute('r', 12); // Increase circle radius size
+        } else {
+            node.style.strokeWidth = '2px'; // Restore default stroke width
+            node.setAttribute('r', 10); // Restore default circle radius size
+        }
+    });
+
+    panelLinks.forEach(link => {
+        if (highlight) {
+            link.style.strokeWidth = '3px'; // Set stroke width to 5px
+        } else {
+            link.style.strokeWidth = '1px'; // Restore default stroke width
+        }
+    });
+}
+
+// Get the VisualCode button element
+const visualCodeButton = document.getElementById('VisualCodeButton');
+const mappingConflictButton = document.getElementById('mappingConflictButton');
+const counterNarrativesButton = document.getElementById('counterNarrativesButton');
+const localDataButton = document.getElementById('localDataButton');
+const networksButton = document.getElementById('networksButton');
+const forensicsButton = document.getElementById('forensicsButton');
+const csrButton = document.getElementById('csrButton');
+
+// Add click event listener
+visualCodeButton.addEventListener('click', function() {
+    this.classList.toggle('highlighted');
+    toggleHighlight('VisualCode', this.classList.contains('highlighted'));
+});
+
+mappingConflictButton.addEventListener('click', function() {
+    this.classList.toggle('highlighted');
+    toggleHighlight('MappingConflict', this.classList.contains('highlighted'));
+});
+
+counterNarrativesButton.addEventListener('click', function() {
+    this.classList.toggle('highlighted');
+    toggleHighlight('CounterNarrative', this.classList.contains('highlighted'));
+});
+
+
+localDataButton.addEventListener('click', function() {
+    this.classList.toggle('highlighted');
+    toggleHighlight('LocalData', this.classList.contains('highlighted'));
+});
+
+networksButton.addEventListener('click', function() {
+    this.classList.toggle('highlighted');
+    toggleHighlight('NetworkModels', this.classList.contains('highlighted'));
+});
+
+forensicsButton.addEventListener('click', function() {
+    this.classList.toggle('highlighted');
+    toggleHighlight('CounterForensics', this.classList.contains('highlighted'));
+});
+
+csrButton.addEventListener('click', function() {
+    this.classList.toggle('highlighted');
+    toggleHighlightByTag('csr', this.classList.contains('highlighted'));
+});
+
+
+    
+ </script>
+
+</body>
+
+</html>
